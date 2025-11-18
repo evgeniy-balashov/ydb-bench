@@ -16,7 +16,8 @@ class Runner:
         database: str,
         root_certificates_file: Optional[str] = None,
         user: Optional[str] = None,
-        password: Optional[str] = None
+        password: Optional[str] = None,
+        table_folder: str = "pgbench"
     ):
         """
         Initialize YdbExecutor with YDB connection parameters.
@@ -27,6 +28,7 @@ class Runner:
             root_certificates_file: Optional path to root certificate file for TLS
             user: Optional username for authentication
             password: Optional password for authentication
+            table_folder: Folder name for tables (default: "pgbench")
         """
         # Load root certificates from file if provided
         root_certificates = None
@@ -44,6 +46,9 @@ class Runner:
         self._credentials = None
         if user and password:
             self._credentials = ydb.StaticCredentials(self._config, user=user, password=password)
+        
+        # Store table folder for use in operations
+        self._table_folder = table_folder
 
     @asynccontextmanager
     async def _get_pool(self):
@@ -68,7 +73,7 @@ class Runner:
         
         async def _init():
             async with self._get_pool() as pool:
-                initer = Initializer(scale)
+                initer = Initializer(scale, self._table_folder)
                 await initer.create_tables(pool)
                 
                 # Fill tables in parallel using TaskGroup
@@ -108,7 +113,7 @@ class Runner:
             ValueError: If scale exceeds the number of branches in the database
         """
         result = await pool.execute_with_retries(
-            "SELECT COUNT(*) as branch_count FROM `pgbench/branches`;"
+            f"SELECT COUNT(*) as branch_count FROM `{self._table_folder}/branches`;"
         )
         
         # Extract the count from result
@@ -149,7 +154,7 @@ class Runner:
                 for i in range(worker_count):
                     bid_from = math.floor(float(scale)/worker_count*i)+1
                     bid_to = math.floor(float(scale)/worker_count*(i+1))
-                    worker = Worker(bid_from, bid_to, tran_count, metrics)
+                    worker = Worker(bid_from, bid_to, tran_count, metrics, self._table_folder)
                     
                     if use_single_session:
                         tg.create_task(worker.execute_single_session(pool))

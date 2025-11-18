@@ -2,6 +2,7 @@
 import click
 import os
 import logging
+import re
 from multiprocessing import Pool
 from runner import Runner
 
@@ -13,7 +14,7 @@ logging.basicConfig(
 )
 
 
-def create_runner_from_config(endpoint, database, cert_file, user, password):
+def create_runner_from_config(endpoint, database, cert_file, user, password, table_folder):
     """
     Create a Runner instance from configuration.
     
@@ -23,6 +24,7 @@ def create_runner_from_config(endpoint, database, cert_file, user, password):
         cert_file: Path to certificate file
         user: Username
         password: Password
+        table_folder: Folder name for tables
         
     Returns:
         Runner instance
@@ -32,7 +34,8 @@ def create_runner_from_config(endpoint, database, cert_file, user, password):
         database=database,
         root_certificates_file=cert_file,
         user=user,
-        password=password
+        password=password,
+        table_folder=table_folder
     )
 
 
@@ -57,6 +60,27 @@ def get_config_value(cli_value, env_var, required=False):
     return value
 
 
+def validate_table_folder(table_folder: str) -> str:
+    """
+    Validate and sanitize table folder name to prevent SQL injection.
+    
+    Args:
+        table_folder: The table folder name to validate
+        
+    Returns:
+        The validated table folder name
+        
+    Raises:
+        click.ClickException: If the table folder name contains invalid characters
+    """
+    if not re.match(r'^[a-zA-Z0-9_\-]+$', table_folder):
+        raise click.ClickException(
+            f"Invalid table folder name '{table_folder}'. "
+            "Only alphanumeric characters, underscores, and hyphens are allowed."
+        )
+    return table_folder
+
+
 @click.group()
 def cli():
     """YDB pgbench-like workload tool."""
@@ -69,9 +93,10 @@ def cli():
 @click.option('--cert-file', help='Path to root certificate file')
 @click.option('--user', help='Username for authentication')
 @click.option('--password', help='Password for authentication')
+@click.option('--table-folder', default='pgbench', help='Folder name for tables (default: pgbench)')
 @click.option('--scale', default=100, help='Number of branches to create (default: 100)')
 @click.option('--processes', default=1, help='Number of parallel processes (default: 1)')
-def init(endpoint, database, cert_file, user, password, scale, processes):
+def init(endpoint, database, cert_file, user, password, table_folder, scale, processes):
     """Initialize database tables with test data."""
     # Get configuration from CLI options or environment variables
     endpoint = get_config_value(endpoint, 'YDB_ENDPOINT', required=True)
@@ -80,13 +105,16 @@ def init(endpoint, database, cert_file, user, password, scale, processes):
     user = get_config_value(user, 'YDB_USER')
     password = get_config_value(password, 'YDB_PASSWORD')
     
-    click.echo(f"Initializing database with scale={scale}, processes={processes}")
+    # Validate table folder name
+    table_folder = validate_table_folder(table_folder)
+    
+    click.echo(f"Initializing database with table_folder={table_folder}, scale={scale}, processes={processes}")
     
     def init_worker(process_id):
         """Worker function for multiprocessing."""
         if processes > 1:
             click.echo(f"Process {process_id} started")
-        runner = create_runner_from_config(endpoint, database, cert_file, user, password)
+        runner = create_runner_from_config(endpoint, database, cert_file, user, password, table_folder)
         runner.init_tables(scale)
     
     if processes == 1:
@@ -106,12 +134,13 @@ def init(endpoint, database, cert_file, user, password, scale, processes):
 @click.option('--cert-file', help='Path to root certificate file')
 @click.option('--user', help='Username for authentication')
 @click.option('--password', help='Password for authentication')
+@click.option('--table-folder', default='pgbench', help='Folder name for tables (default: pgbench)')
 @click.option('--scale', default=100, help='Number of branches (must match init scale, default: 100)')
 @click.option('--workers', default=7, help='Number of async workers per process (default: 7)')
 @click.option('--transactions', default=100, help='Number of transactions per worker (default: 100)')
 @click.option('--processes', default=1, help='Number of parallel processes (default: 1)')
 @click.option('--single-session', is_flag=True, help='Use single session mode instead of pooled mode')
-def run(endpoint, database, cert_file, user, password, scale, workers, transactions, processes, single_session):
+def run(endpoint, database, cert_file, user, password, table_folder, scale, workers, transactions, processes, single_session):
     """Run workload against the database."""
     # Get configuration from CLI options or environment variables
     endpoint = get_config_value(endpoint, 'YDB_ENDPOINT', required=True)
@@ -120,14 +149,17 @@ def run(endpoint, database, cert_file, user, password, scale, workers, transacti
     user = get_config_value(user, 'YDB_USER')
     password = get_config_value(password, 'YDB_PASSWORD')
     
+    # Validate table folder name
+    table_folder = validate_table_folder(table_folder)
+    
     mode = "single session" if single_session else "pooled"
-    click.echo(f"Running workload with scale={scale}, workers={workers}, transactions={transactions}, processes={processes}, mode={mode}")
+    click.echo(f"Running workload with table_folder={table_folder}, scale={scale}, workers={workers}, transactions={transactions}, processes={processes}, mode={mode}")
     
     def run_worker(process_id):
         """Worker function for multiprocessing."""
         if processes > 1:
             click.echo(f"Process {process_id} started")
-        runner = create_runner_from_config(endpoint, database, cert_file, user, password)
+        runner = create_runner_from_config(endpoint, database, cert_file, user, password, table_folder)
         runner.run(workers, transactions, scale, single_session)
     
     if processes == 1:

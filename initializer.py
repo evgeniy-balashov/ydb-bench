@@ -3,53 +3,55 @@ from constants import TELLERS_PER_BRANCH, ACCOUNTS_PER_BRANCH
 
 
 class Initializer:
-    def __init__(self, scale: int = 100):
+    def __init__(self, scale: int = 100, table_folder: str = "pgbench"):
         """
         Initialize the Initializer with a scale factor.
         
         Args:
             scale: Number of branches to create (default: 100)
+            table_folder: Folder name for tables (default: "pgbench")
         """
         self._scale = scale
+        self._table_folder = table_folder
 
     async def create_tables(self, pool: ydb.aio.QuerySessionPool):
         """Create the pgbench tables in the database."""
         await pool.execute_with_retries(
-            """
-            DROP TABLE IF EXISTS `pgbench/accounts`;
-            CREATE TABLE `pgbench/accounts`
+            f"""
+            DROP TABLE IF EXISTS `{self._table_folder}/accounts`;
+            CREATE TABLE `{self._table_folder}/accounts`
             (
                 aid Int32,
-                bid Int32, 
+                bid Int32,
                 abalance Int32,
                 filler Utf8,
                 PRIMARY KEY(aid)
             );
 
-            DROP TABLE IF EXISTS `pgbench/branches`;
-            CREATE TABLE `pgbench/branches`
+            DROP TABLE IF EXISTS `{self._table_folder}/branches`;
+            CREATE TABLE `{self._table_folder}/branches`
             (
-                bid Int32, 
+                bid Int32,
                 bbalance Int32,
                 filler Utf8,
                 PRIMARY KEY(bid)
             );
 
-            DROP TABLE IF EXISTS `pgbench/tellers`;
-            CREATE TABLE `pgbench/tellers`
+            DROP TABLE IF EXISTS `{self._table_folder}/tellers`;
+            CREATE TABLE `{self._table_folder}/tellers`
             (
                 tid Int32,
-                bid Int32, 
+                bid Int32,
                 tbalance Int32,
                 filler Utf8,
                 PRIMARY KEY(tid)
             );
 
-            DROP TABLE IF EXISTS `pgbench/history`;
-            CREATE TABLE `pgbench/history`
+            DROP TABLE IF EXISTS `{self._table_folder}/history`;
+            CREATE TABLE `{self._table_folder}/history`
             (
                 tid Int32,
-                bid Int32, 
+                bid Int32,
                 aid Int32,
                 delta Int32,
                 mtime timestamp,
@@ -74,19 +76,19 @@ class Initializer:
             raise ValueError(f"Branch ID {bid} is out of valid range [1, {self._scale}]")
         
         await pool.execute_with_retries(
-            """
+            f"""
             $d = SELECT d FROM (SELECT AsList(0,1,2,3,4,5,6,7,8,9) as d) FLATTEN LIST BY (d);
 
-            REPLACE INTO `pgbench/branches`(bid, bbalance, filler)
+            REPLACE INTO `{self._table_folder}/branches`(bid, bbalance, filler)
             VALUES ($bid, 0 , null);
 
-            REPLACE INTO `pgbench/tellers`(tid, bid, tbalance, filler)
+            REPLACE INTO `{self._table_folder}/tellers`(tid, bid, tbalance, filler)
             SELECT
                 ($bid-1)*$tellers_per_branch+d1.d+1 as tid, $bid, 0 , null
             FROM
                 $d as d1;
 
-            REPLACE INTO `pgbench/accounts`(aid, bid, abalance, filler)
+            REPLACE INTO `{self._table_folder}/accounts`(aid, bid, abalance, filler)
             SELECT
                 ($bid-1)*$accounts_per_branch + rn + 1 as aid,
                 $bid as bid,

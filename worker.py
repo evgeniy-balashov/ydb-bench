@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 
 class Worker:
-    def __init__(self, bid_from: int, bid_to: int, count: int, metrics_collector: MetricsCollector = None):
+    def __init__(self, bid_from: int, bid_to: int, count: int, metrics_collector: MetricsCollector = None, table_folder: str = "pgbench"):
         """
         Initialize a worker that executes transactions.
         
@@ -18,12 +18,14 @@ class Worker:
             bid_to: Ending branch ID (inclusive)
             count: Number of transactions to execute
             metrics_collector: Optional metrics collector for tracking performance
+            table_folder: Folder name for tables (default: "pgbench")
         """
         self._bid_from = bid_from
         self._bid_to = bid_to
         self._count = count
         self._bid = None
         self._metrics = metrics_collector
+        self._table_folder = table_folder
 
     async def execute_pooled(self, pool: ydb.aio.QuerySessionPool):
         """
@@ -76,12 +78,12 @@ class Worker:
         try:
             async with session.transaction() as tx:
                 async with await tx.execute(
-                    """
-                        UPDATE `pgbench/accounts` SET abalance = abalance + $delta WHERE aid = $aid;
-                        SELECT abalance FROM `pgbench/accounts` WHERE aid = $aid;
-                        UPDATE `pgbench/tellers` SET tbalance = tbalance + $delta WHERE tid = $tid;
-                        UPDATE `pgbench/branches` SET bbalance = bbalance + $delta WHERE bid = $bid;
-                        INSERT INTO `pgbench/history` (tid, bid, aid, delta, mtime)
+                    f"""
+                        UPDATE `{self._table_folder}/accounts` SET abalance = abalance + $delta WHERE aid = $aid;
+                        SELECT abalance FROM `{self._table_folder}/accounts` WHERE aid = $aid;
+                        UPDATE `{self._table_folder}/tellers` SET tbalance = tbalance + $delta WHERE tid = $tid;
+                        UPDATE `{self._table_folder}/branches` SET bbalance = bbalance + $delta WHERE bid = $bid;
+                        INSERT INTO `{self._table_folder}/history` (tid, bid, aid, delta, mtime)
                         VALUES ($tid, $bid, $aid, $delta, CurrentUtcTimestamp());
                     """,
                     parameters={
