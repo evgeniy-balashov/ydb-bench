@@ -1,8 +1,8 @@
 import ydb
 from typing import Optional
-from constants import TELLERS_PER_BRANCH, ACCOUNTS_PER_BRANCH
-from metrics import MetricsCollector
-from base_executor import BaseExecutor
+from .constants import TELLERS_PER_BRANCH, ACCOUNTS_PER_BRANCH
+from .metrics import MetricsCollector
+from .base_executor import BaseExecutor
 
 
 class Initializer(BaseExecutor):

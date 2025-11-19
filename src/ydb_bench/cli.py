@@ -3,7 +3,7 @@ import click
 import logging
 import re
 from multiprocessing import Pool
-from runner import Runner
+from .runner import Runner
 
 # Configure logging to stderr
 logging.basicConfig(
@@ -165,7 +165,7 @@ def run(ctx, client, jobs, transactions, single_session, file):
         metrics.print_summary()
     else:
         # Multi-process execution
-        from metrics import MetricsCollector
+        from .metrics import MetricsCollector
         
         # Prepare arguments for each worker process
         worker_args = [

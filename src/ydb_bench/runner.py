@@ -4,7 +4,7 @@ import logging
 from contextlib import asynccontextmanager
 from typing import Optional
 import math
-from metrics import MetricsCollector
+from .metrics import MetricsCollector
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +84,7 @@ class Runner:
             scale: Number of branches to create (defines range 1 to scale)
             job_count: Number of parallel jobs for filling tables (default: 10)
         """
-        from initializer import Initializer
+        from .initializer import Initializer
         
         # Create initializer instances for parallel execution
         initializers = []
@@ -120,7 +120,7 @@ class Runner:
             use_single_session: If True, use single session mode; if False, use pooled mode (default)
             script: Optional SQL script to execute (if None, uses default script)
         """
-        from job import Job
+        from .job import Job
         
         metrics = MetricsCollector()
         

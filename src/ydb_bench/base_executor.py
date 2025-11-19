@@ -1,7 +1,7 @@
 import ydb
 import logging
 from typing import Optional
-from metrics import MetricsCollector
+from .metrics import MetricsCollector
 
 logger = logging.getLogger(__name__)
 

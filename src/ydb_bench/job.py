@@ -4,9 +4,9 @@ import time
 import re
 from random import randint
 from typing import Optional
-from constants import TELLERS_PER_BRANCH, ACCOUNTS_PER_BRANCH, DEFAULT_SCRIPT
-from metrics import MetricsCollector
-from base_executor import BaseExecutor
+from .constants import TELLERS_PER_BRANCH, ACCOUNTS_PER_BRANCH, DEFAULT_SCRIPT
+from .metrics import MetricsCollector
+from .base_executor import BaseExecutor
 
 logger = logging.getLogger(__name__)
 
