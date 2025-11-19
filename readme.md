@@ -7,7 +7,7 @@
 ### C использованием pipx 
 
 ```bash
-# Установка из c github
+# Установка c github
 pipx install git+https://github.com/senjaster/ydb-bench
 
 # Или установка в режиме разработки
