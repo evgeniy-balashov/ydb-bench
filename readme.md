@@ -1,43 +1,43 @@
-# YDB Bench - pgbench-like Workload Tool
+# YDB Bench - Инструмент для нагрузочного тестирования в стиле pgbench
 
-A tool for running pgbench-like workloads against YDB databases.
+Инструмент для запуска нагрузочных тестов в стиле pgbench для баз данных YDB.
 
-## Installation
+## Установка
 
-### Using pipx (Recommended)
+### C использованием pipx 
 
 ```bash
-# Install from local directory
-pipx install .
+# Установка из c github
+pipx install git+https://github.com/senjaster/ydb-bench
 
-# Or install in editable mode for development
+# Или установка в режиме разработки
 pipx install -e .
 ```
 
-### Using pip
+### Использование pip
 
 ```bash
-# Activate virtual environment
+# Активация виртуального окружения
 source .venv/bin/activate
 
-# Install the package
+# Установка пакета
 pip install -e .
 ```
 
-## Configuration
+## Конфигурация
 
-The tool supports configuration via environment variables with CLI option overrides.
+Инструмент поддерживает конфигурацию через переменные окружения с возможностью переопределения через параметры командной строки.
 
-### Environment Variables
+### Переменные окружения
 
-- `YDB_ENDPOINT` - YDB endpoint (e.g., `grpcs://ydb-host:2135`)
-- `YDB_DATABASE` - Database path (e.g., `/Root/database`)
-- `YDB_ROOT_CERT` - Path to root certificate file (optional)
-- `YDB_USER` - Username for authentication (optional)
-- `YDB_PASSWORD` - Password for authentication (optional)
-- `YDB_PREFIX_PATH` - Folder name for tables (default: pgbench)
+- `YDB_ENDPOINT` - Эндпоинт YDB (например, `grpcs://ydb-host:2135`)
+- `YDB_DATABASE` - Путь к базе данных (например, `/Root/database`)
+- `YDB_ROOT_CERT` - Путь к файлу корневого сертификата (опционально)
+- `YDB_USER` - Имя пользователя для аутентификации (опционально)
+- `YDB_PASSWORD` - Пароль для аутентификации (опционально)
+- `YDB_PREFIX_PATH` - Имя папки для таблиц (по умолчанию: pgbench)
 
-### Example Environment Setup
+### Пример настройки окружения
 
 ```bash
 export YDB_ENDPOINT="grpcs://ydb-node-1.ydb-cluster.com:2135"
@@ -47,17 +47,17 @@ export YDB_USER="your_user"
 export YDB_PASSWORD="your_password"
 ```
 
-## Usage
+## Использование
 
-### Initialize Database
+### Инициализация базы данных
 
-Create tables and populate with test data:
+Создание таблиц и заполнение тестовыми данными:
 
 ```bash
-# Using environment variables
+# Использование переменных окружения
 ydb-bench init --scale 100
 
-# Using CLI options (overrides environment variables)
+# Использование параметров командной строки (переопределяет переменные окружения)
 ydb-bench init \
   --endpoint "grpcs://ydb-host:2135" \
   --database "/Root/database" \
@@ -67,19 +67,19 @@ ydb-bench init \
   --scale 100
 ```
 
-**Options:**
-- `--scale` / `-s` - Number of branches to create (default: 100)
-- `--prefix-path` - Folder name for tables (default: pgbench)
+**Параметры:**
+- `--scale` / `-s` - Множитель к количеству строк в таблицах (по умолчанию: 100)
+- `--prefix-path` - Имя папки для таблиц (по умолчанию: pgbench)
 
-### Run Workload
+### Запуск нагрузочного теста
 
-Execute pgbench-like transactions:
+Выполнение транзакций tpcb-like из pgbench:
 
 ```bash
-# Using environment variables
+# Использование переменных окружения
 ydb-bench run --jobs 100 --transactions 1000
 
-# Using CLI options
+# Использование параметров командной строки
 ydb-bench run \
   --endpoint "grpcs://ydb-host:2135" \
   --database "/Root/database" \
@@ -89,77 +89,91 @@ ydb-bench run \
   --jobs 100 \
   --transactions 1000
 
-# With multiple client processes
+# С несколькими клиентскими процессами
 ydb-bench run --processes 4 --jobs 25 --transactions 1000
 
-# Using single session mode
-ydb-bench run --jobs 10 --transactions 100 --single-session
-
-# Using custom SQL script
+# Использование пользовательского SQL-скрипта
 ydb-bench run --jobs 10 --transactions 100 --file custom_script.sql
 ```
 
-**Options:**
-- `--processes` - Number of parallel client processes (default: 1)
-- `--jobs` / `-j` - Number of parallel jobs per process (default: 1). Each job uses separate connection.
-- `--transactions` / `-t` - Number of transactions each job runs (default: 100)
-- `--single-session` - Use single persistent session per job instead of requesting session from pool each time
-- `--file` / `-f` - Path to file containing SQL script to execute
+**Параметры:**
+- `--processes` - Количество параллельных клиентских процессов (по умолчанию: 1)
+- `--jobs` / `-j` - Количество параллельных задач на процесс (по умолчанию: 1). Каждая задача использует отдельное соединение.
+- `--transactions` / `-t` - Количество транзакций, выполняемых каждой задачей (по умолчанию: 100)
+- `--single-session` - Использовать одну постоянную сессию на задачу вместо запроса сессии из пула каждый раз
+- `--file` / `-f` - Путь к файлу с SQL-скриптом для выполнения
 
-## Architecture
+## Режимы выполнения
 
-The application is organized as a Python package:
+### С использованием пула
+Использует пул сессий YDB с автоматической логикой повторных попыток. Подходит для большинства нагрузок.
 
-```
-src/ydb_bench/
-├── __init__.py          - Package initialization
-├── __main__.py          - Entry point for python -m ydb_bench
-├── cli.py               - Click CLI implementation
-├── runner.py            - YDB connection management and workload orchestration
-├── initializer.py       - Database table creation and data population
-├── job.py               - Transaction execution logic
-├── base_executor.py     - Base class for executors
-├── metrics.py           - Metrics collection and reporting
-└── constants.py         - Constants and default values
-```
-
-## Execution Modes
-
-### Pooled Mode (Default)
-Uses YDB's session pool with automatic retry logic. Best for most workloads.
-
-### Single Session Mode
-Uses a single acquired session for all operations. Useful for testing session behavior.
+### Режим одной сессии
+Использует одну полученную сессию для всех операций. Может быть быстрее. Экспериментальный режим.
 
 ```bash
 ydb-bench run --single-session --jobs 10 --transactions 100
 ```
 
-## Multiprocessing 
+## Использование нескольких процессов
 
-When `--processes` is set to 1 (default), the tool runs in single-process mode using async/await for concurrency.
+Когда `--processes` установлен в 1 (по умолчанию), инструмент работает в однопроцессном режиме, используя async/await для параллелизма.
 
-When `--processes` is greater than 1, the tool uses Python's multiprocessing to run multiple processes in parallel, each with its own set of async jobs. 
-
-## Connection count
-
-Each job uses it's own connection.
-Each process has it's own set of jobs
-Therefore Number of parallel connections is equal to (jobs * processes).
-Generally it is recommended to raise jobs until python process CPU consumption reaches 90%. Practical job count limit is somewhere between 10 and 100 depending on cluster performance (better performance - less jobs). To rise connection count further one should increase process count.
+Когда `--processes` больше 1, инструмент использует многопроцессность Python для запуска нескольких процессов параллельно, каждый со своим набором асинхронных задач.
 
 
-## Examples
+## Количество соединений
+
+Инструмент создает соединения с базой данных на основе двух параметров:
+
+- **Джобы (`--jobs`)**: Количество параллельно выполняющихся джобов внутри каждого процесса. Каждый джоб использует собственное соединение с базой данных.
+- **Процессы (`--processes`)**: Количество независимых процессов Python, работающих параллельно. Каждый процесс имеет свой набор задач.
+
+**Формула общего количества соединений:**
+```
+Общее количество соединений = jobs × processes
+```
+
+### Примеры
+
+| Процессы | Джобы  | Общее количество соединений |
+|----------|--------|-----------------------------|
+| 1        | 10     | 10                          |
+| 4        | 25     | 100                         |
+| 8        | 50     | 400                         |
+
+### Рекомендации по настройке
+
+1. **Начните с количества джобов**: Сначала увеличивайте `--jobs`, пока использование CPU процессом не достигнет ~80-90%
+   - Типичный диапазон: 10-100 джобов на процесс
+   - Чем медленнее выполняется транзакция, тем больше джобов может обслуживать один процесс
+
+2. **Масштабируйте процессами**: Как только один процесс насыщен по CPU, увеличивайте `--processes` для увеличения нагрузки соединений
+   - Каждый процесс работает независимо со своим собственным циклом событий
+   - Распределяет нагрузку между несколькими ядрами CPU
+
+3. **Пример пути масштабирования**:
+   ```bash
+   # Шаг 1: Найдите оптимальное количество задач на процесс
+   ydb-bench run --jobs 10 --transactions 1000   # Мониторьте CPU
+   ydb-bench run --jobs 25 --transactions 1000   # Увеличивайте до ~90% CPU
+   
+   # Шаг 2: Масштабируйте горизонтально с процессами
+   ydb-bench run --processes 4 --jobs 25 --transactions 1000  # 100 соединений всего
+   ```
+   Количество процессов не должно превышать количество ядер CPU.
+
+## Примеры
 
 ```bash
-# Initialize with 50 branches
+# Инициализация с 50 бранчами
 ydb-bench init --scale 50
 
-# Run workload with 10 jobs, 500 transactions each
+# Запуск нагрузки с 10 задачами, по 500 транзакций каждая
 ydb-bench run --jobs 10 --transactions 500
 
-# Run workload with 4 client processes, 25 jobs per process
-ydb-bench run --client 4 --jobs 25 --transactions 1000
+# Запуск нагрузки с 4 клиентскими процессами, 25 задач на процесс
+ydb-bench run --process 4 --jobs 25 --transactions 1000
 
-# Run with custom script
+# Запуск с пользовательским скриптом
 ydb-bench run --jobs 10 --transactions 100 --file my_script.sql
