@@ -247,7 +247,7 @@ def run(
 
     mode = "single session" if single_session else "pooled"
     click.echo(
-        f"Running workload with prefix_path={prefix_path}, scale={scale}, jobs={jobs}, transactions={transactions}, client={client}, mode={mode}"
+        f"Running workload with prefix_path={prefix_path}, scale={scale}, jobs={jobs}, transactions={transactions}, client={processes}, mode={mode}"
     )
 
     if processes == 1:
