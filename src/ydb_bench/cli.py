@@ -269,12 +269,6 @@ def run(
             processes, jobs, transactions, single_session, script_selector
         )
 
-    # Print any unhandled errors
-    if metrics.unhandled_error_messages:
-        click.echo("\nUnhandled errors occurred:", err=True)
-        for error_msg in metrics.unhandled_error_messages:
-            click.echo(f"  {error_msg}", err=True)
-
     # Print metrics summary
     metrics.print_summary()
 

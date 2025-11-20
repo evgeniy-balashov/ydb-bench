@@ -234,4 +234,12 @@ class MetricsCollector:
         )
 
         print("=" * 90, file=sys.stdout)
+
+        # Print any unhandled errors
+        if self.unhandled_error_messages:
+            print("\nUnhandled errors occurred:", file=sys.stderr)
+            for error_msg in self.unhandled_error_messages:
+                print(f"  {error_msg}", file=sys.stderr)
+            print("=" * 90, file=sys.stdout)
+
         sys.stdout.flush()
