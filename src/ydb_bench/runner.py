@@ -89,26 +89,13 @@ class Runner:
             password: Optional password for authentication
             table_folder: Folder name for tables (default: "pgbench")
         """
-        # Store connection parameters for creating copies
-        self.endpoint = endpoint
-        self.database = database
-        self.root_certificates_file = root_certificates_file
-        self.user = user
-        self.password = password
+        # Store connection parameters for creating copies and dynamic config creation
+        self._endpoint = endpoint
+        self._database = database
+        self._root_certificates_file = root_certificates_file
+        self._user = user
+        self._password = password
         
-        # Load root certificates from file if provided
-        root_certificates = None
-        if root_certificates_file:
-            root_certificates = ydb.load_ydb_root_certificate(root_certificates_file)
-
-        # Create driver configuration
-        self._config = ydb.DriverConfig(endpoint=endpoint, database=database, root_certificates=root_certificates)
-
-        # Create credentials from username and password if provided
-        self._credentials = None
-        if user and password:
-            self._credentials = ydb.StaticCredentials(self._config, user=user, password=password)
-
         # Store table folder and bid range for use in operations
         self.table_folder = table_folder
         self.bid_from = bid_from
@@ -119,8 +106,26 @@ class Runner:
         """
         Async context manager that creates and yields a YDB QuerySessionPool.
         Handles driver initialization, connection waiting, and cleanup.
+        Creates config and credentials dynamically to avoid pickling issues.
         """
-        async with ydb.aio.Driver(driver_config=self._config, credentials=self._credentials) as driver:
+        # Load root certificates from file if provided
+        root_certificates = None
+        if self._root_certificates_file:
+            root_certificates = ydb.load_ydb_root_certificate(self._root_certificates_file)
+
+        # Create driver configuration
+        config = ydb.DriverConfig(
+            endpoint=self._endpoint,
+            database=self._database,
+            root_certificates=root_certificates
+        )
+
+        # Create credentials from username and password if provided
+        credentials = None
+        if self._user and self._password:
+            credentials = ydb.StaticCredentials(config, user=self._user, password=self._password)
+
+        async with ydb.aio.Driver(driver_config=config, credentials=credentials) as driver:
             await driver.wait()
             logger.info("Connected to YDB")
             await asyncio.sleep(3)  # Required to make node discovery work
@@ -143,13 +148,13 @@ class Runner:
         
         for bid_from, bid_to in ranges:
             runner = Runner(
-                endpoint=self.endpoint,
-                database=self.database,
+                endpoint=self._endpoint,
+                database=self._database,
                 bid_from=bid_from,
                 bid_to=bid_to,
-                root_certificates_file=self.root_certificates_file,
-                user=self.user,
-                password=self.password,
+                root_certificates_file=self._root_certificates_file,
+                user=self._user,
+                password=self._password,
                 table_folder=self.table_folder,
             )
             runners.append(runner)

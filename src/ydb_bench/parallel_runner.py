@@ -8,6 +8,18 @@ from .runner import Runner
 from .workload import WeightedScriptSelector
 
 
+def _run_worker(
+    runner: Runner,
+    process_id: int,
+    jobs: int,
+    transactions: int,
+    single_session: bool,
+    script_selector: Optional[WeightedScriptSelector],
+) -> MetricsCollector:
+    """Worker function that runs a runner instance."""
+    return runner.run(process_id, jobs, transactions, single_session, script_selector)
+
+
 class ParallelRunner:
     """Handles parallel execution of workloads across multiple processes."""
 
@@ -51,14 +63,9 @@ class ParallelRunner:
             for i, runner in enumerate(runners)
         ]
 
-        def run_worker(runner: Runner, process_id: int, jobs: int, transactions: int,
-                      single_session: bool, script_selector: Optional[WeightedScriptSelector]) -> MetricsCollector:
-            """Worker function that runs a runner instance."""
-            return runner.run(process_id, jobs, transactions, single_session, script_selector)
-
         with Pool(processes) as pool:
             # Collect metrics from all worker processes
-            results = pool.starmap(run_worker, worker_args)
+            results = pool.starmap(_run_worker, worker_args)
 
         # Merge all metrics into a single collector
         merged_metrics = MetricsCollector()
