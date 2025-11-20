@@ -18,6 +18,9 @@ logger = logging.getLogger(__name__)
 def split_range(start: int, end: int, count: int) -> List[Tuple[int, int]]:
     """
     Split range [start, end] into count non-overlapping sub-ranges.
+    
+    If count exceeds the number of elements in the range, returns count ranges
+    where some ranges will be duplicates of single elements.
 
     Args:
         start: Start of the range (inclusive)
@@ -25,10 +28,13 @@ def split_range(start: int, end: int, count: int) -> List[Tuple[int, int]]:
         count: Number of sub-ranges to create
 
     Returns:
-        List of tuples representing (start, end) for each sub-range
+        List of tuples representing (start, end) for each sub-range.
+        All ranges are guaranteed to be non-empty (start <= end).
 
     Example:
-        split(1, 100, 4) -> [(1, 25), (26, 50), (51, 75), (76, 100)]
+        split_range(1, 100, 4) -> [(1, 25), (26, 50), (51, 75), (76, 100)]
+        split_range(1, 2, 3) -> [(1, 1), (1, 1), (2, 2)]
+        split_range(1, 5, 10) -> [(1, 1), (1, 1), (2, 2), (2, 2), (3, 3), (3, 3), (4, 4), (4, 4), (5, 5), (5, 5)]
     """
     if count <= 0:
         raise ValueError("count must be positive")
@@ -37,15 +43,24 @@ def split_range(start: int, end: int, count: int) -> List[Tuple[int, int]]:
 
     total_size = end - start + 1
     ranges = []
-
-    for i in range(count):
-        range_start = start + math.floor(float(total_size) / count * i)
-        range_end = start + math.floor(float(total_size) / count * (i + 1)) - 1
-        # Adjust last range to include any remainder
-        if i == count - 1:
-            range_end = end
-        ranges.append((range_start, range_end))
-
+    
+    # When count > total_size, create single-element ranges with duplicates
+    if count > total_size:
+        for i in range(count):
+            # Map each range index to an element, allowing duplicates
+            element_index = math.floor(float(i) * total_size / count)
+            element_value = start + element_index
+            ranges.append((element_value, element_value))
+    else:
+        # Normal case: split range into count parts
+        for i in range(count):
+            range_start = start + math.floor(float(total_size) / count * i)
+            range_end = start + math.floor(float(total_size) / count * (i + 1)) - 1
+            # Adjust last range to include any remainder
+            if i == count - 1:
+                range_end = end
+            ranges.append((range_start, range_end))
+    
     return ranges
 
 
