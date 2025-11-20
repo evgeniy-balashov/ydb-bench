@@ -15,9 +15,10 @@ def _run_worker(
     transactions: int,
     single_session: bool,
     script_selector: Optional[WeightedScriptSelector],
+    preheat: int,
 ) -> MetricsCollector:
     """Worker function that runs a runner instance."""
-    return runner.run(process_id, jobs, transactions, single_session, script_selector)
+    return runner.run(process_id, jobs, transactions, single_session, script_selector, preheat)
 
 
 class ParallelRunner:
@@ -39,6 +40,7 @@ class ParallelRunner:
         transactions: int,
         single_session: bool,
         script_selector: Optional[WeightedScriptSelector] = None,
+        preheat: int = 0,
     ) -> MetricsCollector:
         """
         Run workload with multiple processes in parallel.
@@ -50,6 +52,7 @@ class ParallelRunner:
             transactions: Number of transactions per job
             single_session: If True, use single session mode
             script_selector: Optional WeightedScriptSelector for multiple weighted scripts
+            preheat: Number of preheat transactions to run before counting metrics (default: 0)
 
         Returns:
             Merged MetricsCollector with results from all processes
@@ -59,7 +62,7 @@ class ParallelRunner:
         
         # Prepare arguments for each worker process
         worker_args = [
-            (runner, i, jobs, transactions, single_session, script_selector)
+            (runner, i, jobs, transactions, single_session, script_selector, preheat)
             for i, runner in enumerate(runners)
         ]
 

@@ -30,6 +30,7 @@ class Job(BaseExecutor):
         table_folder: str = "pgbench",
         use_single_session: bool = False,
         script_selector: Optional[WeightedScriptSelector] = None,
+        preheat: int = 0,
     ):
         """
         Initialize a job that executes transactions.
@@ -37,11 +38,12 @@ class Job(BaseExecutor):
         Args:
             bid_from: Starting branch ID (inclusive)
             bid_to: Ending branch ID (inclusive)
-            tran_count: Number of transactions to execute
+            tran_count: Number of transactions to execute (includes preheat transactions)
             metrics_collector: Optional metrics collector for tracking performance
             table_folder: Folder name for tables (default: "pgbench")
             use_single_session: If True, use single session mode; if False, use pooled mode
             script_selector: Optional WeightedScriptSelector for multiple weighted scripts (if None, uses default script)
+            preheat: Number of preheat transactions to run before counting metrics (default: 0)
         """
         super().__init__(
             bid_from,
@@ -51,6 +53,8 @@ class Job(BaseExecutor):
             table_folder,
             use_single_session,
         )
+
+        self._preheat = preheat
 
         # Create script selector if none provided
         if script_selector is None:
@@ -104,6 +108,9 @@ class Job(BaseExecutor):
             session: YDB query session
             iteration: Current iteration number (0-based)
         """
+        # Determine if this is a preheat transaction
+        is_preheat = iteration < self._preheat
+        
         start_time = time.time()
         success = False
         error_message = ""
@@ -136,7 +143,8 @@ class Job(BaseExecutor):
             raise
         finally:
             end_time = time.time()
-            if self._metrics:
+            # Only record metrics if not in preheat phase
+            if self._metrics and not is_preheat:
                 self._metrics.record_transaction(
                     start_time,
                     end_time,

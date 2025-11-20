@@ -226,6 +226,12 @@ def init(ctx: click.Context) -> None:
     help="Number of transactions each job runs (default: 100)",
 )
 @click.option(
+    "--preheat",
+    type=int,
+    default=0,
+    help="Number of preheat transactions to run before counting metrics (default: 0)",
+)
+@click.option(
     "--single-session",
     is_flag=True,
     help="Use single session mode instead of pooled mode",
@@ -244,6 +250,7 @@ def run(
     processes: int,
     jobs: int,
     transactions: int,
+    preheat: int,
     single_session: bool,
     file: Tuple[Tuple[str, float], ...],
 ) -> None:
@@ -255,18 +262,19 @@ def run(
     script_selector = create_script_selector(file, runner.table_folder)
 
     mode = "single session" if single_session else "pooled"
+    preheat_info = f", preheat={preheat}" if preheat > 0 else ""
     click.echo(
-        f"Running workload with prefix_path={runner.table_folder}, scale={scale}, jobs={jobs}, transactions={transactions}, client={processes}, mode={mode}"
+        f"Running workload with prefix_path={runner.table_folder}, scale={scale}, jobs={jobs}, transactions={transactions}{preheat_info}, client={processes}, mode={mode}"
     )
 
     if processes == 1:
         # Single process execution
-        metrics = runner.run(0, jobs, transactions, single_session, script_selector)
+        metrics = runner.run(0, jobs, transactions, single_session, script_selector, preheat)
     else:
         # Multi-process execution
         parallel_runner = ParallelRunner(runner)
         metrics = parallel_runner.run_parallel(
-            processes, jobs, transactions, single_session, script_selector
+            processes, jobs, transactions, single_session, script_selector, preheat
         )
 
     # Print metrics summary

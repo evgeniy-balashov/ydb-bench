@@ -204,6 +204,7 @@ class Runner:
         tran_count: int = 100,
         use_single_session: bool = False,
         script_selector: Optional[WeightedScriptSelector] = None,
+        preheat: int = 0,
     ) -> MetricsCollector:
         """
         Run workload with specified number of jobs and transactions.
@@ -215,6 +216,7 @@ class Runner:
             tran_count: Number of transactions per job
             use_single_session: If True, use single session mode; if False, use pooled mode (default)
             script_selector: Optional WeightedScriptSelector for multiple weighted scripts (if None, uses default script)
+            preheat: Number of preheat transactions to run before counting metrics (default: 0)
 
         Returns:
             MetricsCollector instance with collected metrics
@@ -228,6 +230,8 @@ class Runner:
 
         try:
             # Create job instances for parallel execution
+            # Total transaction count includes preheat transactions
+            total_tran_count = tran_count + preheat
             jobs = []
             ranges = split_range(self.bid_from, self.bid_to, job_count)
             for job_bid_from, job_bid_to in ranges:
@@ -235,11 +239,12 @@ class Runner:
                     Job(
                         job_bid_from,
                         job_bid_to,
-                        tran_count,
+                        total_tran_count,
                         metrics,
                         self.table_folder,
                         use_single_session,
                         script_selector,
+                        preheat,
                     )
                 )
 
